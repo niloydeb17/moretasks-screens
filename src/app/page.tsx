@@ -858,13 +858,13 @@ function ControlPanel({
 
               <input
                 style={{ ...inputStyle, marginBottom: 6 }}
-                placeholder="Name"
+                placeholder="e.g. Priya Sharma"
                 value={person.name}
                 onChange={(e) => setPeople(people.map((p, j) => (j === i ? { ...p, name: e.target.value } : p)))}
               />
               <input
                 style={{ ...inputStyle, marginBottom: 8 }}
-                placeholder="Day Mon"
+                placeholder="e.g. 15 Jun"
                 value={person.subtitle}
                 onChange={(e) => setPeople(people.map((p, j) => (j === i ? { ...p, subtitle: e.target.value } : p)))}
               />
