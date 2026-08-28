@@ -1,0 +1,35 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="streamline:trophy-solid" filter="url(#filter0_n_0_102)">
+<g clip-path="url(#clip0_0_102)">
+<path id="Vector" fill-rule="evenodd" clip-rule="evenodd" d="M1.48023e-07 3.42857C1.48023e-07 2.51926 0.361224 1.64719 1.00421 1.00421C1.64719 0.361223 2.51926 0 3.42857 0L16.6171 0L16.8686 0.00914286H47.136L47.3829 0H60.5714C61.4807 0 62.3528 0.361223 62.9958 1.00421C63.6388 1.64719 64 2.51926 64 3.42857V16.6171C64.0005 20.6779 62.5141 24.5983 59.8215 27.638C57.1288 30.6777 53.4163 32.6261 49.3851 33.1154C48.369 36.2229 46.5382 39.0011 44.0836 41.1607C41.6289 43.3202 38.6402 44.7822 35.4286 45.3943V57.1429H47.3829C48.2922 57.1429 49.1642 57.5041 49.8072 58.1471C50.4502 58.79 50.8114 59.6621 50.8114 60.5714C50.8114 61.4807 50.4502 62.3528 49.8072 62.9958C49.1642 63.6388 48.2922 64 47.3829 64H16.6126C15.7033 64 14.8312 63.6388 14.1882 62.9958C13.5452 62.3528 13.184 61.4807 13.184 60.5714C13.184 59.6621 13.5452 58.79 14.1882 58.1471C14.8312 57.5041 15.7033 57.1429 16.6126 57.1429H28.5714V45.3943C25.3598 44.7822 22.3711 43.3202 19.9164 41.1607C17.4618 39.0011 15.631 36.2229 14.6149 33.1154C10.5837 32.6261 6.87118 30.6777 4.17853 27.638C1.48588 24.5983 -0.00054158 20.6779 1.48023e-07 16.6171V3.42857ZM13.1886 25.7554V6.85714H6.85714V16.6171C6.85714 20.8 9.49029 24.3703 13.1886 25.76M50.8114 6.86171V25.76C52.6721 25.0619 54.2753 23.8124 55.4067 22.1786C56.5382 20.5447 57.1439 18.6045 57.1429 16.6171V6.85714L50.8114 6.86171Z" fill="url(#paint0_linear_0_102)"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_n_0_102" x="0" y="0" width="64" height="64" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.66666668653488159 0.66666668653488159" stitchTiles="stitch" numOctaves="3" result="noise" seed="5934" />
+<feComponentTransfer in="noise" result="coloredNoise1">
+<feFuncR type="linear" slope="2" intercept="-0.5" />
+<feFuncG type="linear" slope="2" intercept="-0.5" />
+<feFuncB type="linear" slope="2" intercept="-0.5" />
+<feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feComponentTransfer in="noise1Clipped" result="color1">
+<feFuncA type="table" tableValues="0 0.25" />
+</feComponentTransfer>
+<feMerge result="effect1_noise_0_102">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+</filter>
+<linearGradient id="paint0_linear_0_102" x1="32" y1="0" x2="32" y2="64" gradientUnits="userSpaceOnUse">
+<stop stop-color="#E7CB82"/>
+<stop offset="1" stop-color="#B26C00"/>
+</linearGradient>
+<clipPath id="clip0_0_102">
+<rect width="64" height="64" fill="white"/>
+</clipPath>
+</defs>
+</svg>

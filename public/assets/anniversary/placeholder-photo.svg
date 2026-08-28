@@ -1,0 +1,9 @@
+<svg width="700" height="1053" viewBox="0 0 700 1053" xmlns="http://www.w3.org/2000/svg">
+<rect width="700" height="1053" fill="#d8dade"/>
+<g transform="translate(350,500)" fill="none" stroke="#9aa0aa" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+  <rect x="-120" y="-90" width="240" height="180" rx="10"/>
+  <circle cx="-55" cy="-40" r="20"/>
+  <path d="M -120 60 L -30 -20 L 40 40 L 90 0 L 120 30 L 120 90 L -120 90 Z" fill="#9aa0aa" stroke="none"/>
+</g>
+<text x="350" y="640" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#9aa0aa">Add a photo</text>
+</svg>

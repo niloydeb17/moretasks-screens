@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/*
+ * Chrome tokens — the editor UI around the video only.
+ *
+ * Deliberately scoped to the app's own furniture (stage backdrop, tab bar,
+ * control panel). The scenes are the rendered *content*: their colours come
+ * from Figma and must look identical in every theme, or the exported MP4
+ * would change depending on the viewer's OS setting. Nothing under
+ * `src/scenes` reads these.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Backdrop behind the mocked-up photo frame. */
+  --chrome-stage: #eceae5;
+
+  /* Tab bar — these are the Figma values (node 3:29778) and stay exact in light. */
+  --nav-bg: #e5e6e3;
+  --nav-indicator: #ffffff;
+  --nav-fg-active: #181d27;
+  --nav-fg-inactive: #535862;
+  --nav-shadow: 0px 1px 8px 0px rgba(0, 0, 0, 0.11);
+  /* The bar floats over whatever artwork the frame is showing, so it needs
+   * its own edge — against a pale painting the Figma fill alone reads as
+   * transparent. A hairline ring plus a lift, both as box-shadow so the pill's
+   * box (and the sliding indicator's maths) stay pixel-identical. */
+  --nav-container-shadow: 0 0 0 1px rgba(0, 0, 0, 0.09), 0 6px 20px rgba(0, 0, 0, 0.16);
+
+  /* Control panel. Translucent so the artwork behind reads through it; the
+   * blur is what keeps the form legible over a busy photo. */
+  --panel-bg: rgba(255, 255, 255, 0.72);
+  --panel-blur: saturate(180%) blur(20px);
+  --panel-fg: #1a1a1a;
+  --panel-strong: #333333;
+  --panel-label: #5a5a5a;
+  --panel-muted: #6b6b6b;
+  --panel-faint: #8a8a8a;
+  --panel-divider: #e6e6e6;
+  --panel-edge: rgba(0, 0, 0, 0.10);
+
+  --input-bg: rgba(255, 255, 255, 0.75);
+  --input-border: #d4d4d4;
+  --input-fg: #1a1a1a;
+
+  --btn-border: rgba(0, 0, 0, 0.28);
+  --btn-fg: #333333;
+  --link-muted: #6b6b6b;
+  --thumb-border: #dcdcdc;
+
+  /* Primary action inverts against the panel in both themes. */
+  --accent-bg: #171717;
+  --accent-fg: #ffffff;
+
+  --danger: #dc2626;
+
+  /* "Scene not built yet" plate, shown inside the frame window. */
+  --placeholder-bg: #e8e8e8;
+  --placeholder-fg: #777777;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+
+    --chrome-stage: #141414;
+
+    --nav-bg: #2b2b2b;
+    --nav-indicator: #474747;
+    --nav-fg-active: #ffffff;
+    --nav-fg-inactive: #a6a6a6;
+    --nav-shadow: 0px 1px 8px 0px rgba(0, 0, 0, 0.45);
+    --nav-container-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10), 0 6px 20px rgba(0, 0, 0, 0.45);
+
+    --panel-bg: rgba(24, 24, 24, 0.72);
+    --panel-fg: #eeeeee;
+    --panel-strong: #cccccc;
+    --panel-label: #aaaaaa;
+    --panel-muted: #999999;
+    --panel-faint: #777777;
+    --panel-divider: #2a2a2a;
+    --panel-edge: rgba(255, 255, 255, 0.10);
+
+    --input-bg: rgba(12, 12, 12, 0.55);
+    --input-border: #333333;
+    --input-fg: #eeeeee;
+
+    --btn-border: rgba(255, 255, 255, 0.28);
+    --btn-fg: #cccccc;
+    --link-muted: #888888;
+    --thumb-border: #333333;
+
+    --accent-bg: #ffffff;
+    --accent-fg: #111111;
+
+    --danger: #f87171;
+
+    --placeholder-bg: #262626;
+    --placeholder-fg: #8a8a8a;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
