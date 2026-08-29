@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import gsap from 'gsap';
+import { upload } from '@vercel/blob/client';
 import Stage from '@/components/Stage';
 import type { Achievement, BuiltSceneId, Composition, Person, Quote, SceneData, Testimonial } from '@/lib/compositions';
 import { COMPOSITIONS, isBuiltScene } from '@/lib/compositions';
@@ -573,20 +574,32 @@ function ControlPanel({
     setUploading(slotKey);
     setUploadError(null);
     try {
-      const form = new FormData();
-      form.append('file', file);
-      // Only ever set for the MVP portrait, and only when its toggle is on —
-      // this is the flag that sends the photo to remove.bg.
-      if (treat) form.append('treat', '1');
-      const res = await fetch('/api/uploads', { method: 'POST', body: form });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? `Upload failed (${res.status})`);
-      apply(body.url as string);
-      // The upload succeeded but the background is still there — worth saying,
-      // since the photo looks wrong rather than missing.
-      if (treat && body.backgroundRemoved === false) {
-        setUploadError(body.note ?? 'The background could not be removed.');
+      // Goes straight from this browser to Blob storage — the file's bytes
+      // never pass through our own server, which is what keeps a normal phone
+      // photo from ever hitting a Vercel Function's request body limit.
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/uploads',
+      });
+      let url = blob.url;
+      // Only ever requested for the MVP portrait, and only when its toggle is
+      // on — this is the flag that sends the photo to remove.bg.
+      if (treat) {
+        const res = await fetch('/api/uploads/treat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: blob.url }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? `Treatment failed (${res.status})`);
+        url = body.url as string;
+        // The upload succeeded but the background is still there — worth
+        // saying, since the photo looks wrong rather than missing.
+        if (body.backgroundRemoved === false) {
+          setUploadError(body.note ?? 'The background could not be removed.');
+        }
       }
+      apply(url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : String(err));
     } finally {
