@@ -108,6 +108,11 @@ export default function PhotoFramePreviewPage() {
   const Scene = built ? SCENES[built] : null;
 
   const [data, setData] = useState<SceneData>(composition?.defaults ?? EMPTY_DATA);
+  // Every tab's edits, keyed by tab id, so switching away and back restores
+  // what was typed rather than snapping back to the composition's defaults.
+  // A tab visited for the first time has no entry yet and falls back to its
+  // own defaults, same as before this cache existed.
+  const dataByTabRef = useRef<Partial<Record<TabId, SceneData>>>({});
   const [frame, setFrame] = useState(0);
   const startRef = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -192,8 +197,11 @@ export default function PhotoFramePreviewPage() {
     // scene the person is no longer looking at, so the switch simply waits.
     if (id === activeTab || exporting) return;
     const applyChange = () => {
+      dataByTabRef.current[activeTab] = data;
       setActiveTab(id);
-      setData((isBuiltScene(id) ? COMPOSITIONS[id] : null)?.defaults ?? EMPTY_DATA);
+      setData(
+        dataByTabRef.current[id] ?? (isBuiltScene(id) ? COMPOSITIONS[id] : null)?.defaults ?? EMPTY_DATA,
+      );
       startRef.current = null;
       setFrame(0);
     };
