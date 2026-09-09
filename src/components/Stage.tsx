@@ -5,17 +5,27 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 interface StageProps {
   width: number;
   height: number;
+  /**
+   * `'cover'` (the default) scales up to fill the container, cropping
+   * whichever edge overhangs — right for a preview that should never show
+   * black bars. `'contain'` scales down to fit entirely inside instead,
+   * letterboxing rather than cropping.
+   *
+   * Only worth reaching for `'contain'` when the composition has off-centre
+   * content a crop could plausibly cut off entirely rather than just trim —
+   * see `page.tsx`'s use of this prop.
+   */
+  fit?: 'cover' | 'contain';
   children: ReactNode;
 }
 
 /**
- * Scales the fixed-size composition to fill whatever container it's placed in,
- * so a person previewing it never sees black bars — scaled up or down to cover
- * the container, cropping whichever edge overhangs on a container whose aspect
- * ratio doesn't match the composition's, and always centered regardless of how
- * the container's own size compares to the composition's.
+ * Scales the fixed-size composition to fit whatever container it's placed in.
+ * Scaled up or down and always centered, regardless of how the container's
+ * own size compares to the composition's — see the `fit` prop for cover vs.
+ * contain.
  *
- * That last part matters: `/render/[scene]` places this directly under
+ * Centering matters here: `/render/[scene]` places this directly under
  * `RenderLayout`, whose only child is this component, so its container is
  * exactly the page — but this is also used on preview pages where the
  * container is whatever's left of the window after a side panel, an arbitrary
@@ -28,10 +38,10 @@ interface StageProps {
  *
  * Inert during an actual capture: `scripts/render.mjs` / `scripts/still.mjs` set
  * the puppeteer viewport to exactly `width`x`height`, so the container matches
- * the composition exactly, `scale` resolves to 1, and centering nets to zero —
- * this never changes a captured pixel.
+ * the composition exactly, `scale` resolves to 1 under either fit mode, and
+ * centering nets to zero — this never changes a captured pixel.
  */
-export default function Stage({ width, height, children }: StageProps) {
+export default function Stage({ width, height, fit = 'cover', children }: StageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
 
@@ -39,17 +49,19 @@ export default function Stage({ width, height, children }: StageProps) {
     const container = containerRef.current;
     if (!container) return;
 
-    const fit = () => {
+    const measure = () => {
       const { clientWidth, clientHeight } = container;
       if (clientWidth === 0 || clientHeight === 0) return;
-      setScale(Math.max(clientWidth / width, clientHeight / height));
+      const wRatio = clientWidth / width;
+      const hRatio = clientHeight / height;
+      setScale(fit === 'contain' ? Math.min(wRatio, hRatio) : Math.max(wRatio, hRatio));
     };
 
-    fit();
-    const observer = new ResizeObserver(fit);
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [width, height]);
+  }, [width, height, fit]);
 
   return (
     <div ref={containerRef} style={{ position: 'absolute', inset: 0 }}>
