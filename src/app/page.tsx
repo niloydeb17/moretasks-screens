@@ -3,7 +3,15 @@
 /* eslint-disable @next/next/no-img-element -- consistent with the scene components
    this page composes; a plain <img> keeps this preview honest to what they render. */
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import { flushSync } from 'react-dom';
 import gsap from 'gsap';
 import { upload } from '@vercel/blob/client';
@@ -54,6 +62,50 @@ type TabId = (typeof TABS)[number]['id'];
  */
 const NAV_PANE = 232;
 const FIELDS_PANE = 340;
+
+/**
+ * Below this width the control panel (`FIELDS_PANE`) becomes a draggable
+ * bottom sheet instead of a sidebar, and the stage below renders its
+ * backdrop and device-frame window as two independent pieces instead of one
+ * scaled composition (see the comment where that split happens, further
+ * down). Kept in sync with `globals.css`'s own `@media (max-width: 640px)`
+ * by hand — this one drives JSX branching and isn't itself expressible in
+ * CSS.
+ *
+ * `NAV_PANE`, the left-hand template list, doesn't get a mobile treatment
+ * here — see the comment above `.control-panel` in globals.css for why.
+ */
+const MOBILE_BREAKPOINT = 640;
+
+/**
+ * How much of the collapsed sheet stays visible above the bottom edge — its
+ * drag handle plus a little breathing room, enough to read as "there's more
+ * here" and to tap-or-drag without hunting for the exact edge of the screen.
+ */
+const MOBILE_SHEET_PEEK = 72;
+
+/**
+ * Top margin for the area the mobile frame centers itself within. This repo's
+ * tab switcher lives in the persistent `NAV_PANE` sidebar rather than a
+ * floating pill overlaying the stage, so — unlike the layout this was ported
+ * from — nothing hovers above the mobile frame that its centering needs to
+ * dodge. This is just breathing room between the frame and the top edge.
+ */
+const MOBILE_FRAME_TOP_RESERVE = 24;
+
+function useIsMobile(breakpoint: number): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const update = () => setIsMobile(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, [breakpoint]);
+
+  return isMobile;
+}
 
 // Both real scenes render on the same 1080x1920 canvas, so one fit computation
 // serves either of them without change.
@@ -114,6 +166,7 @@ export default function PhotoFramePreviewPage() {
   // own defaults, same as before this cache existed.
   const dataByTabRef = useRef<Partial<Record<TabId, SceneData>>>({});
   const [frame, setFrame] = useState(0);
+  const isMobile = useIsMobile(MOBILE_BREAKPOINT);
   const startRef = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -285,44 +338,110 @@ export default function PhotoFramePreviewPage() {
         style={{
           position: 'absolute',
           left: NAV_PANE,
-          right: FIELDS_PANE,
+          // On mobile the control panel is a floating bottom sheet (fixed
+          // position, see ControlPanel below) rather than a sidebar that
+          // takes up its own column, so nothing needs to be reserved for it
+          // here.
+          right: isMobile ? 0 : FIELDS_PANE,
           top: 0,
           bottom: 0,
           overflow: 'hidden',
         }}
       >
-        <Stage width={BACKDROP.plate.w} height={BACKDROP.plate.h}>
-          <div style={{ position: 'relative', width: BACKDROP.plate.w, height: BACKDROP.plate.h }}>
+        {isMobile ? (
+          <>
+            {/*
+             * Below the mobile breakpoint, the backdrop and the device-frame
+             * window are rendered as two independent pieces instead of one
+             * scaled `BACKDROP.plate` composition. Desktop keeps the single
+             * `Stage`-scaled plate (below) because the window already sits at
+             * the plate's own centre there (see `BACKDROP`'s own comment) —
+             * a cover-scaled crop never pushes it off-screen. Splitting them
+             * instead lets the backdrop cover edge-to-edge while the window
+             * is sized and centred independently, which is what makes it
+             * possible to also show it bigger on a small screen rather than
+             * just proportionally scaled down with the rest of the plate.
+             */}
             <img
               src={BACKDROP.src}
               alt=""
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
             <div
               style={{
                 position: 'absolute',
-                left: BACKDROP.window.x,
-                top: BACKDROP.window.y,
-                width: BACKDROP.window.w,
-                height: BACKDROP.window.h,
-                overflow: 'hidden',
+                top: MOBILE_FRAME_TOP_RESERVE,
+                left: 0,
+                right: 0,
+                bottom: MOBILE_SHEET_PEEK,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 24,
+                boxSizing: 'border-box',
               }}
             >
-              <div ref={contentRef} style={{ position: 'absolute', inset: 0 }}>
-                {Scene && composition ? (
-                  // The window is 488x864 (9:16 to within 0.4%) and every portrait
-                  // composition is exactly 9:16, so Stage's cover fit lands with
-                  // only that fraction of a percent to crop — invisible in practice.
-                  <Stage width={PORTRAIT_CANVAS.w} height={PORTRAIT_CANVAS.h}>
-                    <Scene data={data} frame={frame} fps={composition.fps} />
-                  </Stage>
-                ) : (
-                  <NotBuiltPlaceholder label={TABS.find((t) => t.id === activeTab)?.label ?? activeTab} />
-                )}
+              <div
+                style={{
+                  position: 'relative',
+                  width: 'min(82vw, 380px)',
+                  aspectRatio: `${BACKDROP.window.w} / ${BACKDROP.window.h}`,
+                  overflow: 'hidden',
+                  boxShadow: '0 20px 48px rgba(0, 0, 0, 0.35)',
+                }}
+              >
+                <div ref={contentRef} style={{ position: 'absolute', inset: 0 }}>
+                  {Scene && composition ? (
+                    // `cover`, not `contain`: the window is 488x864 (9:16 to
+                    // within 0.4%) and every portrait composition is exactly
+                    // 9:16, so `cover` lands with only that fraction of a
+                    // percent to crop — invisible in practice, and cropping
+                    // rather than letterboxing that gap is what avoids
+                    // reintroducing a visible border inside the frame.
+                    <Stage width={PORTRAIT_CANVAS.w} height={PORTRAIT_CANVAS.h} fit="cover">
+                      <Scene data={data} frame={frame} fps={composition.fps} />
+                    </Stage>
+                  ) : (
+                    <NotBuiltPlaceholder label={TABS.find((t) => t.id === activeTab)?.label ?? activeTab} />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </Stage>
+          </>
+        ) : (
+          <Stage width={BACKDROP.plate.w} height={BACKDROP.plate.h}>
+            <div style={{ position: 'relative', width: BACKDROP.plate.w, height: BACKDROP.plate.h }}>
+              <img
+                src={BACKDROP.src}
+                alt=""
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: BACKDROP.window.x,
+                  top: BACKDROP.window.y,
+                  width: BACKDROP.window.w,
+                  height: BACKDROP.window.h,
+                  overflow: 'hidden',
+                }}
+              >
+                <div ref={contentRef} style={{ position: 'absolute', inset: 0 }}>
+                  {Scene && composition ? (
+                    // The window is 488x864 (9:16 to within 0.4%) and every portrait
+                    // composition is exactly 9:16, so Stage's cover fit lands with
+                    // only that fraction of a percent to crop — invisible in practice.
+                    <Stage width={PORTRAIT_CANVAS.w} height={PORTRAIT_CANVAS.h}>
+                      <Scene data={data} frame={frame} fps={composition.fps} />
+                    </Stage>
+                  ) : (
+                    <NotBuiltPlaceholder label={TABS.find((t) => t.id === activeTab)?.label ?? activeTab} />
+                  )}
+                </div>
+              </div>
+            </div>
+          </Stage>
+        )}
       </div>
 
       {exportJob && (
@@ -357,6 +476,7 @@ export default function PhotoFramePreviewPage() {
         downloadProgress={exportProgress}
         downloadError={exportError}
         onDownload={() => void handleDownload()}
+        isMobile={isMobile}
       />
     </div>
   );
@@ -490,7 +610,13 @@ interface ControlPanelProps {
   downloadProgress: number;
   downloadError: string | null;
   onDownload: () => void;
+  isMobile: boolean;
 }
+
+/** Below this drag distance/duration a pointer gesture reads as a tap on the
+ *  handle (toggle open/closed) rather than a drag (snap to nearest edge). */
+const SHEET_TAP_MAX_DISTANCE = 6;
+const SHEET_TAP_MAX_DURATION_MS = 300;
 
 /** A plain white card — the carousel's own unfilled-slot look — shown until a
  *  photo is uploaded, so an empty slot never renders a broken image icon. */
@@ -506,9 +632,107 @@ function ControlPanel({
   downloadProgress,
   downloadError,
   onDownload,
+  isMobile,
 }: ControlPanelProps) {
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Collapsed by default on mobile — a phone screen can't afford to give up
+  // 65vh of preview space before the person doing the editing has asked for
+  // the form at all. Meaningless on desktop, where the sidebar has no
+  // collapsed state.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ startY: number; startTime: number; baseOffset: number } | null>(null);
+
+  // Measured rather than read straight off `panelRef` inline: a ref read
+  // during render reflects the *previous* paint, not the layout React is
+  // currently computing, so the panel's very first render would find
+  // `offsetHeight` still at 0 and open the sheet fully instead of collapsed.
+  // `useLayoutEffect` re-measures and re-renders before the browser paints,
+  // so the collapsed position is correct from the first visible frame.
+  const [panelHeight, setPanelHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!isMobile) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const measure = () => setPanelHeight(panel.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [isMobile]);
+
+  // Tapping the preview behind an open sheet closes it — the standard
+  // expectation for any bottom sheet, and the only way back to the frame
+  // without dragging once the sheet has expanded to cover most of it.
+  useEffect(() => {
+    if (!isMobile || !sheetOpen) return;
+    const onPointerDownOutside = (e: PointerEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setSheetOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDownOutside);
+    return () => document.removeEventListener('pointerdown', onPointerDownOutside);
+  }, [isMobile, sheetOpen]);
+
+  const sheetTransform = (offsetPx: number) => `translateY(${offsetPx}px)`;
+  const collapsedOffsetPx = () => Math.max(0, panelHeight - MOBILE_SHEET_PEEK);
+
+  const onHandlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    try {
+      // Keeps the drag tracking even if a fast swipe carries the pointer
+      // outside the handle's own (small) hit area. Best-effort: a capture
+      // failure shouldn't block the drag itself, just that resilience.
+      (e.target as Element).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignored — see above.
+    }
+    // Direct 1:1 tracking during the drag — the CSS transition is only for
+    // the snap after release, and would otherwise make the sheet visibly
+    // lag behind the finger.
+    panel.style.transition = 'none';
+    dragRef.current = {
+      startY: e.clientY,
+      startTime: performance.now(),
+      baseOffset: sheetOpen ? 0 : collapsedOffsetPx(),
+    };
+  };
+
+  const onHandlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const panel = panelRef.current;
+    if (!drag || !panel) return;
+    const delta = e.clientY - drag.startY;
+    const offset = Math.min(collapsedOffsetPx(), Math.max(0, drag.baseOffset + delta));
+    panel.style.transform = sheetTransform(offset);
+  };
+
+  const endDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const panel = panelRef.current;
+    dragRef.current = null;
+    if (!drag || !panel) return;
+    panel.style.transition = '';
+
+    const distance = Math.abs(e.clientY - drag.startY);
+    const duration = performance.now() - drag.startTime;
+    if (distance <= SHEET_TAP_MAX_DISTANCE && duration <= SHEET_TAP_MAX_DURATION_MS) {
+      // A tap toggles rather than re-measuring drag distance, which for a
+      // near-zero movement would just snap back to whichever state it
+      // already had — indistinguishable from the handle doing nothing.
+      setSheetOpen((open) => !open);
+      return;
+    }
+
+    const delta = e.clientY - drag.startY;
+    const offset = Math.min(collapsedOffsetPx(), Math.max(0, drag.baseOffset + delta));
+    setSheetOpen(offset < collapsedOffsetPx() / 2);
+  };
 
   const set = <K extends keyof SceneData>(key: K, value: SceneData[K]) =>
     onChange({ ...data, [key]: value });
@@ -619,24 +843,33 @@ function ControlPanel({
 
   return (
     <div
+      ref={panelRef}
+      className="control-panel"
       style={{
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: FIELDS_PANE,
         zIndex: 1,
         background: 'var(--panel-bg)',
         backdropFilter: 'var(--panel-blur)',
         WebkitBackdropFilter: 'var(--panel-blur)',
         color: 'var(--panel-fg)',
-        borderLeft: '1px solid var(--panel-edge)',
-        padding: 24,
         overflowY: 'auto',
         fontFamily: 'system-ui, sans-serif',
         boxSizing: 'border-box',
+        // Only the mobile bottom sheet has an open/closed position to track —
+        // the CSS class's own default (no transform) is exactly right for
+        // the desktop sidebar, so this simply doesn't apply there.
+        transform: isMobile ? sheetTransform(sheetOpen ? 0 : collapsedOffsetPx()) : undefined,
       }}
     >
+      {isMobile && (
+        <div
+          className="sheet-handle"
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        />
+      )}
+
       <h1 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 4px' }}>{tabLabel}</h1>
 
       {scene === 'mvp' && (

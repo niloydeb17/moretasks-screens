@@ -58,6 +58,12 @@
   /* "Scene not built yet" plate, shown inside the frame window. */
   --placeholder-bg: #e8e8e8;
   --placeholder-fg: #777777;
+
+  /* Lift for the control panel when it's a floating bottom sheet (mobile
+   * layout, see .control-panel below) rather than a full-height sidebar —
+   * the frosted background alone doesn't read as a distinct surface without
+   * something to separate it from whatever's directly behind it. */
+  --sheet-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
 }
 
 @theme inline {
@@ -105,6 +111,8 @@
 
     --placeholder-bg: #262626;
     --placeholder-fg: #8a8a8a;
+
+    --sheet-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -112,4 +120,87 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+/*
+ * Responsive chrome — the editor's own furniture, not the exported scenes.
+ * Scenes stay fixed-size (1080x1920 etc.) always: they're Figma-exact
+ * compositions meant for a fixed device mockup, and `Stage` already scales
+ * that fixed canvas to fit whatever space it's given.
+ *
+ * Only the control panel (the right-hand `FIELDS_PANE` sidebar, edited in
+ * `page.tsx`) gets a breakpoint here: below 640px it becomes a draggable
+ * bottom sheet instead of a full-height sidebar, matching the split mobile
+ * stage rendering in `page.tsx` (see `MOBILE_BREAKPOINT` there — kept in
+ * sync with this file's own `@media (max-width: 640px)` by hand).
+ *
+ * The left-hand template list (`NAV_PANE`) is deliberately left alone here.
+ * Unlike the sibling implementation this was ported from — where the tab
+ * switcher is a floating horizontal pill that can overflow and need a
+ * shrink/scroll treatment — this repo's tab switcher is a vertical list
+ * inside a persistent, already-`overflowY: auto` sidebar, so the "pill
+ * overflows on a narrow screen" problem this commit fixes doesn't apply to
+ * it. Making `NAV_PANE` itself more compact on mobile is a reasonable
+ * follow-up, but a different, bigger change than this port.
+ */
+.control-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  border-left: 1px solid var(--panel-edge);
+  padding: 24px;
+}
+
+@media (max-width: 640px) {
+  /*
+   * Fixed height, not max-height: a draggable sheet needs a stable distance
+   * to translate between open and closed, and `translateY` on a
+   * shrink-to-fit box would mean that distance changes with content length.
+   * Content longer than the sheet still scrolls internally as before.
+   */
+  .control-panel {
+    position: fixed;
+    top: auto;
+    /* Matches `NAV_PANE` (232px) in page.tsx — the templates sidebar is a
+     * persistent, full-height, higher-`z-index` element on top of this sheet,
+     * so a sheet that extended under it would have its own handle rendered
+     * (and centered) beneath the sidebar: hidden and unclickable. Stopping
+     * at the sidebar's edge keeps the sheet over the preview area only,
+     * where it's actually visible and draggable. */
+    left: 232px;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 65vh;
+    border-left: none;
+    border-top: 1px solid var(--panel-edge);
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    box-shadow: var(--sheet-shadow);
+    /* JS drives the actual open/closed position via an inline `transform`
+     * (see ControlPanel's drag handling in page.tsx) — this only supplies
+     * the snap animation for taps and drag-release, and is switched off
+     * for the duration of an active drag so the sheet tracks the finger
+     * 1:1 instead of chasing it. */
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .sheet-handle {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 16px;
+    margin: -4px 0 0;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .sheet-handle::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--panel-edge);
+  }
 }
